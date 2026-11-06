@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar
+        run: ./build.sh
+
+      - name: Guardar la app
+        uses: actions/upload-artifact@v4
+        with:
+          name: DAWSync-macOS
+          path: build/DAWSync-macOS.zip
+
+      - name: Publicar descarga
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: DAW Sync (build ${{ github.run_number }})
+          files: build/DAWSync-macOS.zip
