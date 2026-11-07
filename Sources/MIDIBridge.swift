@@ -33,6 +33,8 @@ final class MIDIBridge {
 
     /// Se llama (en un hilo de CoreMIDI) cuando el DAW manda play o stop.
     var onTransport: ((TransportCommand) -> Void)?
+    /// Diagnóstico: se llama con cada mensaje MIDI que llega del DAW (sin contar MIDI Clock F8).
+    var onRawMIDI: (([UInt8]) -> Void)?
     private(set) var ready = false
 
     init() {
@@ -54,6 +56,8 @@ final class MIDIBridge {
             let start = UnsafeRawPointer(packet).advanced(by: offset)
             let bytes = Array(UnsafeRawBufferPointer(start: start, count: length))
             found.append(contentsOf: Self.parse(bytes))
+            let meaningful = bytes.filter { $0 != 0xF8 && $0 != 0xFE }
+            if !meaningful.isEmpty { onRawMIDI?(meaningful) }
         }
         for cmd in found { onTransport?(cmd) }
     }

@@ -125,6 +125,8 @@ struct MenuView: View {
 
             Text(engine.lastEvent).font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
+            Text("MIDI recibido de tu DAW: \(engine.midiInCount) · último: \(engine.lastMIDIIn)")
+                .font(.caption2).foregroundColor(.secondary)
 
             HStack {
                 Spacer()

@@ -26,6 +26,8 @@ final class SyncEngine: ObservableObject {
     @Published var peers: [String] = []
     @Published private(set) var lastEvent = "Sin actividad todavía"
     @Published private(set) var networkStatus: String?
+    @Published private(set) var midiInCount = 0
+    @Published private(set) var lastMIDIIn = "—"
 
     let midiReady: Bool
     var displayName: String { network.displayName }
@@ -49,6 +51,13 @@ final class SyncEngine: ObservableObject {
 
         midi.onTransport = { [weak self] command in
             DispatchQueue.main.async { self?.fromDAW(command) }
+        }
+        midi.onRawMIDI = { [weak self] bytes in
+            let hex = bytes.prefix(12).map { String(format: "%02X", $0) }.joined(separator: " ")
+            DispatchQueue.main.async {
+                self?.midiInCount += 1
+                self?.lastMIDIIn = hex
+            }
         }
         network.onCommand = { [weak self] command, sender in
             self?.fromNetwork(command, sender: sender)
