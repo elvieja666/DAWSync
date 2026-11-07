@@ -23,7 +23,7 @@ final class SyncEngine: ObservableObject {
     @Published var outputMode: OutputMode {
         didSet { UserDefaults.standard.set(outputMode.rawValue, forKey: "outputMode") }
     }
-    @Published private(set) var peers: [String] = []
+    @Published var peers: [String] = []
     @Published private(set) var lastEvent = "Sin actividad todavía"
     @Published private(set) var networkStatus: String?
 

@@ -1,17 +1,66 @@
 import AppKit
+import Combine
 import SwiftUI
 
-@main
-struct DAWSyncApp: App {
-    @StateObject private var engine = SyncEngine()
+/// Ícono en la barra de menú con un panel desplegable. Compatible con macOS 11 o más nuevo.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var statusItem: NSStatusItem!
+    private let popover = NSPopover()
+    private var engine: SyncEngine!
+    private var hosting: NSHostingController<MenuView>!
+    private var cancellable: AnyCancellable?
 
-    var body: some Scene {
-        MenuBarExtra {
-            MenuView(engine: engine)
-        } label: {
-            Image(systemName: engine.peers.isEmpty ? "metronome" : "metronome.fill")
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        engine = SyncEngine()
+
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(togglePopover(_:))
+
+        hosting = NSHostingController(rootView: MenuView(engine: engine))
+        popover.contentViewController = hosting
+        popover.behavior = .transient
+
+        cancellable = engine.$peers.sink { [weak self] peers in
+            self?.updateIcon(connected: !peers.isEmpty)
         }
-        .menuBarExtraStyle(.window)
+        updateIcon(connected: false)
+    }
+
+    private func updateIcon(connected: Bool) {
+        guard let button = statusItem.button else { return }
+        let name = connected ? "metronome.fill" : "metronome"
+        if let image = NSImage(systemSymbolName: name, accessibilityDescription: "DAW Sync") {
+            image.isTemplate = true
+            button.image = image
+            button.title = ""
+        } else {
+            button.image = nil
+            button.title = connected ? "♪" : "♩"
+        }
+    }
+
+    @objc private func togglePopover(_ sender: Any?) {
+        if popover.isShown {
+            popover.performClose(sender)
+            return
+        }
+        guard let button = statusItem.button else { return }
+        hosting.view.layoutSubtreeIfNeeded()
+        popover.contentSize = hosting.view.fittingSize
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+@main
+enum DAWSyncMain {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.accessory)
+        app.run()
     }
 }
 
@@ -23,7 +72,7 @@ struct MenuView: View {
             HStack {
                 Text("DAW Sync").font(.headline)
                 Spacer()
-                Text(engine.displayName).font(.caption).foregroundStyle(.secondary)
+                Text(engine.displayName).font(.caption).foregroundColor(.secondary)
             }
 
             // Conexión
@@ -37,10 +86,10 @@ struct MenuView: View {
                     .font(.callout)
             }
             if let status = engine.networkStatus {
-                Text(status).font(.caption).foregroundStyle(.red)
+                Text(status).font(.caption).foregroundColor(.red)
             }
             if !engine.midiReady {
-                Text("No se pudieron crear los puertos MIDI.").font(.caption).foregroundStyle(.red)
+                Text("No se pudieron crear los puertos MIDI.").font(.caption).foregroundColor(.red)
             }
 
             Divider()
@@ -51,9 +100,9 @@ struct MenuView: View {
                 Picker("", selection: $engine.role) {
                     ForEach(Role.allCases) { Text($0.label).tag($0) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(SegmentedPickerStyle())
                 .labelsHidden()
-                Text(roleHelp).font(.caption).foregroundStyle(.secondary)
+                Text(roleHelp).font(.caption).foregroundColor(.secondary)
             }
 
             // Cómo recibe el DAW
@@ -62,9 +111,9 @@ struct MenuView: View {
                 Picker("", selection: $engine.outputMode) {
                     ForEach(OutputMode.allCases) { Text($0.label).tag($0) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(SegmentedPickerStyle())
                 .labelsHidden()
-                Text(outputHelp).font(.caption).foregroundStyle(.secondary)
+                Text(outputHelp).font(.caption).foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack {
                     Button("Probar ▶") { engine.test(.play) }
@@ -75,6 +124,7 @@ struct MenuView: View {
             Divider()
 
             Text(engine.lastEvent).font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack {
                 Spacer()
