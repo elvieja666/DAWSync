@@ -10,7 +10,7 @@ rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 for ARCH in arm64 x86_64; do
-  echo "Compilando $ARCH…"
+  echo "Compilando ${ARCH}..."
   xcrun swiftc -O -swift-version 5 -parse-as-library \
     -target "$ARCH-apple-macos13.0" -sdk "$SDK" \
     Sources/*.swift -o "build/DAWSync-$ARCH"
